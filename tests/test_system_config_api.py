@@ -39,12 +39,13 @@ class SystemConfigApiTestCase(unittest.TestCase):
                     "GEMINI_API_KEY=secret-key-value",
                     "SCHEDULE_TIME=18:00",
                     "LOG_LEVEL=INFO",
-                    "ADMIN_AUTH_ENABLED=false",
+                    "ADMIN_AUTH_ENABLED=true",
                 ]
             )
             + "\n",
             encoding="utf-8",
         )
+        self._orig_dsa_desktop_mode = os.environ.get("DSA_DESKTOP_MODE")
         os.environ["ENV_FILE"] = str(self.env_path)
         Config.reset_instance()
 
@@ -54,6 +55,10 @@ class SystemConfigApiTestCase(unittest.TestCase):
     def tearDown(self) -> None:
         Config.reset_instance()
         os.environ.pop("ENV_FILE", None)
+        if self._orig_dsa_desktop_mode is None:
+            os.environ.pop("DSA_DESKTOP_MODE", None)
+        else:
+            os.environ["DSA_DESKTOP_MODE"] = self._orig_dsa_desktop_mode
         self.temp_dir.cleanup()
 
     def test_get_config_returns_raw_secret_value(self) -> None:
@@ -197,15 +202,18 @@ class SystemConfigApiTestCase(unittest.TestCase):
 
     def test_export_system_config_returns_raw_env_content(self) -> None:
         self.env_path.write_text(
-            "# Web config\nSTOCK_LIST=600519,000001\nGEMINI_API_KEY=secret-key-value\n",
+            "# Web config\nSTOCK_LIST=600519,000001\nGEMINI_API_KEY=secret-key-value\nADMIN_AUTH_ENABLED=true\n",
             encoding="utf-8",
         )
+        self.manager = ConfigManager(env_path=self.env_path)
+        self.service = SystemConfigService(manager=self.manager)
+        Config.reset_instance()
 
         payload = system_config.export_system_config(service=self.service).model_dump()
 
         self.assertEqual(
             payload["content"],
-            "# Web config\nSTOCK_LIST=600519,000001\nGEMINI_API_KEY=secret-key-value\n",
+            "# Web config\nSTOCK_LIST=600519,000001\nGEMINI_API_KEY=secret-key-value\nADMIN_AUTH_ENABLED=true\n",
         )
         self.assertEqual(payload["config_version"], self.manager.get_config_version())
 
@@ -290,6 +298,48 @@ class SystemConfigApiTestCase(unittest.TestCase):
             self.assertIn("STOCK_LIST=600519,000001", export_payload["content"])
             self.assertTrue(import_payload["success"])
             self.assertEqual(self.manager.read_config_map()["STOCK_LIST"], "300750")
+
+    def test_config_env_endpoints_reject_without_backup_access(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"DSA_DESKTOP_MODE": "false"},
+            clear=False,
+        ):
+            self.env_path.write_text(
+                "\n".join(
+                    [
+                        "STOCK_LIST=600519,000001",
+                        "GEMINI_API_KEY=secret-key-value",
+                        "SCHEDULE_TIME=18:00",
+                        "LOG_LEVEL=INFO",
+                        "ADMIN_AUTH_ENABLED=false",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.manager = ConfigManager(env_path=self.env_path)
+            self.service = SystemConfigService(manager=self.manager)
+            Config.reset_instance()
+
+            current = system_config.get_system_config(include_schema=False, service=self.service).model_dump()
+
+            with self.assertRaises(HTTPException) as export_ctx:
+                system_config.export_system_config(service=self.service)
+            self.assertEqual(export_ctx.exception.status_code, 401)
+            self.assertEqual(export_ctx.exception.detail["error"], "env_backup_access_denied")
+
+            with self.assertRaises(HTTPException) as import_ctx:
+                system_config.import_system_config(
+                    request=ImportSystemConfigRequest(
+                        config_version=current["config_version"],
+                        content="STOCK_LIST=300750\n",
+                        reload_now=False,
+                    ),
+                    service=self.service,
+                )
+            self.assertEqual(import_ctx.exception.status_code, 401)
+            self.assertEqual(import_ctx.exception.detail["error"], "env_backup_access_denied")
 
     def test_test_llm_channel_endpoint_returns_service_payload(self) -> None:
         with patch.object(

@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 """System configuration endpoints."""
 
 from __future__ import annotations
 
 import logging
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_system_config_service
@@ -27,16 +28,34 @@ from api.v1.schemas.system_config import (
     ValidateSystemConfigRequest,
     ValidateSystemConfigResponse,
 )
+from src.auth import is_auth_enabled, refresh_auth_state
 from src.services.system_config_service import (
     ConfigConflictError,
     ConfigImportError,
     ConfigValidationError,
     SystemConfigService,
 )
+from src.config import parse_env_bool
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _allow_env_backup_access() -> None:
+    """Gate raw .env backup/restore to explicit secure modes.
+
+    - Desktop runtime keeps existing local behavior via DSA_DESKTOP_MODE.
+    - Non-desktop runtime must be explicitly enabled via admin auth.
+    """
+    if parse_env_bool(os.getenv("DSA_DESKTOP_MODE"), default=False):
+        return
+
+    refresh_auth_state()
+    if is_auth_enabled():
+        return
+
+    raise PermissionError("System configuration backup endpoints are not enabled")
 
 
 @router.get(
@@ -168,8 +187,18 @@ def export_system_config(
 ) -> ExportSystemConfigResponse:
     """Export the active `.env` file for config backup."""
     try:
+        _allow_env_backup_access()
         payload = service.export_env()
         return ExportSystemConfigResponse.model_validate(payload)
+    except PermissionError as exc:
+        logger.warning("System config export blocked: %s", exc)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "env_backup_access_denied",
+                "message": "System config backup is disabled; enable admin authentication first",
+            },
+        )
     except Exception as exc:
         logger.error("Failed to export system configuration: %s", exc, exc_info=True)
         raise HTTPException(
@@ -212,12 +241,22 @@ def import_system_config(
 ) -> UpdateSystemConfigResponse:
     """Import a `.env` backup into the active config."""
     try:
+        _allow_env_backup_access()
         payload = service.import_env(
             config_version=request.config_version,
             content=request.content,
             reload_now=request.reload_now,
         )
         return UpdateSystemConfigResponse.model_validate(payload)
+    except PermissionError as exc:
+        logger.warning("System config import blocked: %s", exc)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "env_backup_access_denied",
+                "message": "System config backup is disabled; enable admin authentication first",
+            },
+        )
     except ConfigImportError as exc:
         raise HTTPException(
             status_code=400,
