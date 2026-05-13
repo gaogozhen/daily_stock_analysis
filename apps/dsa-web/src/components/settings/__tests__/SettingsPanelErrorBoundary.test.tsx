@@ -44,15 +44,18 @@ describe('SettingsPanelErrorBoundary', () => {
     render(
       <SettingsPanelErrorBoundary title="通知设置" resetKey="notification">
         <ThrowingPanel
-          message={`Webhook failed: https://notify.example.test/send?token=super-secret-token&foo=bar OPENAI_API_KEY=sk-supersecretvalue123456 ${'x'.repeat(220)}`}
+          message={`Webhook failed: https://hooks.slack.com/services/T000/B000/path-secret?token=super-secret-token&foo=bar OPENAI_API_KEY=sk-supersecretvalue123456 ${'x'.repeat(220)}`}
         />
       </SettingsPanelErrorBoundary>
     );
 
     const summary = screen.getByText(/错误摘要：/).textContent ?? '';
 
+    expect(summary).toContain('https://hooks.slack.com/[redacted]?[redacted]');
     expect(summary).toContain('?[redacted]');
     expect(summary).toContain('OPENAI_API_KEY=[redacted]');
+    expect(summary).not.toContain('/services/T000/B000/path-secret');
+    expect(summary).not.toContain('path-secret');
     expect(summary).not.toContain('super-secret-token');
     expect(summary).not.toContain('sk-supersecretvalue123456');
     expect(summary.length).toBeLessThanOrEqual('错误摘要：'.length + 183);

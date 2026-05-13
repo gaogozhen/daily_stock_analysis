@@ -22,10 +22,14 @@ function sanitizeUrlLikeText(value: string) {
   return value.replace(/https?:\/\/[^\s"'<>]+/gi, (match) => {
     try {
       const url = new URL(match);
-      const sanitizedUrl = `${url.protocol}//${url.host}${url.pathname}`;
+      const sanitizedPath = url.pathname && url.pathname !== '/' ? '/[redacted]' : '';
+      const sanitizedUrl = `${url.protocol}//${url.host}${sanitizedPath}`;
       return `${sanitizedUrl}${url.search ? '?[redacted]' : ''}${url.hash ? '#[redacted]' : ''}`;
     } catch {
-      return match.replace(/\?[^#\s"'<>]*/g, '?[redacted]').replace(/#[^\s"'<>]*/g, '#[redacted]');
+      return match
+        .replace(/^(https?:\/\/[^/?#\s"'<>]+)\/[^?#\s"'<>]*/i, '$1/[redacted]')
+        .replace(/\?[^#\s"'<>]*/g, '?[redacted]')
+        .replace(/#[^\s"'<>]*/g, '#[redacted]');
     }
   });
 }
