@@ -60,7 +60,12 @@ class ActionBudget:
 
     @classmethod
     def from_mapping(cls, value: Optional[Dict[str, Any]]) -> "ActionBudget":
-        data = value if isinstance(value, dict) else {}
+        if value is None:
+            data = {}
+        elif not isinstance(value, Mapping):
+            raise ValueError("budget must be a mapping when provided")
+        else:
+            data = dict(value)
         return cls(
             timeout_seconds=_coerce_float(
                 data.get("timeout_seconds"),

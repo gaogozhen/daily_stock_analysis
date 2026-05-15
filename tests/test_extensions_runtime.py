@@ -296,6 +296,15 @@ class ExtensionRuntimeTestCase(unittest.TestCase):
         self.assertEqual(invalid_input.error.details["missing_fields"], ["symbol"])
         self.assertEqual(task_runner.calls, [])
 
+    def test_invalid_context_rejects_non_mapping_budget(self):
+        for budget in ([], "invalid-budget"):
+            result = self._runtime().execute_action("test.echo", context={"budget": budget})
+
+            self.assertFalse(result.ok)
+            self.assertEqual(result.error.code, "invalid_context")
+            self.assertEqual(result.error.message, "Action context is invalid.")
+            self.assertEqual(result.error.details["exception_type"], "ValueError")
+
     def test_dry_run_validates_without_invoking_handler(self):
         calls = []
         task_runner = StubTaskRunner()

@@ -63,6 +63,7 @@ MVP 已实现 Action allowlist、confirmation guard、timeout guard 和 call dep
   - [LiteLLM OpenAI-compatible providers](https://docs.litellm.ai/docs/providers/openai_compatible)
   - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat)
 - 运行时依赖边界与核验：本变更仅新增 `src/extensions/*` 与 `src/services/task_queue.py` 路径，未新增/变更 `src/config.py`、`data_provider`、`llm provider`、`model`、`Base URL` 的配置保存、清理或迁移逻辑；兼容核验路径为既有扩展执行单测与任务队列回归：`tests/test_extensions_runtime.py`、`tests/test_task_queue_config_sync.py`。
+- 兼容性影响核对：未改动 `src/core/*`、`src/analyzer/*`、`src/services/*` 的模型路由和 provider 映射；无 `.env` 回写、无配置重写、无历史记录清理、无默认模型降级策略变更；若回退则只需按版本回退到先前发布，不需要独立配置恢复步骤。
 - 回退语义：仅需版本回滚到上一个发布，不执行旧配置清理或隐式迁移；若需保留当前发布行为，恢复对应上一个版本即可。
 - 回归证据：`tests/test_extensions_runtime.py` 覆盖 ActionContext/Guard/Timeout/异步提交路径；`tests/test_task_queue_config_sync.py` 覆盖任务队列配置同步与单例行为，避免影响既有运行时并发与执行预算。
 

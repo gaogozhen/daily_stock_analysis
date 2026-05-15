@@ -24,7 +24,7 @@ For English contributors: please fill in English. All fields marked (EN) accept 
 
 ## Issue Link（如为 umbrella issue / 拆分问题请使用 Refs）
 
-必须填写以下之一 / Fill in one of:
+必须仅填写以下之一 / Fill in exactly one of:
 - `Fixes #<issue_number>` / 非 umbrella issue 或修复问题直达（本 PR 全量修复该 issue）
 - `Refs #<issue_number>` / umbrella issue / 多个子任务拆分场景（本 PR 属于分阶段推进时使用）。**umbrella issue 不要使用 Fixes，避免自动关闭总 issue** / For umbrella/split-plan issues, use `Refs` and avoid `Fixes` to prevent auto-closing parent issue.
 - 无 Issue 时说明原因与验收标准 / If no issue, explain the motivation and acceptance criteria
