@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [改进] 大盘复盘将红绿灯与盘面温度合并为终端友好的盘面信号分数，移除色块进度条与重复温度行。
 - [改进] 大盘复盘近三日市场线索改为标题与来源链接列表，移除摘要片段，降低中英混排和误读风险。
 - [修复] 个股报告筹码分布缺失或返回占位值时归一为单条降级说明，避免逐字段重复“数据缺失，无法判断”。
+- [文档] 补充 Issue #1367（筹码/资金流缺失文案归一）兼容边界说明：明确本轮仅覆盖筹码与资金流缺失降级链路（`data_provider/base.py`、`src/analyzer.py`、`src/core/pipeline.py`、`src/notification.py`、`src/report_language.py`、`src/services/history_service.py`、`src/services/report_renderer.py`、`templates/report_markdown.j2`）；未清理/迁移用户已有 `LITELLM_*`、`AGENT_LITELLM_MODEL`、`VISION_MODEL`、`LLM_TEMPERATURE` 等运行时配置；回退方式为恢复 `.env` 备份或手工还原原始字段。回归依据见 `tests/test_system_config_service.py` 的温度与运行时引用保留用例。
 
 ## [3.17.1] - 2026-05-16
 
