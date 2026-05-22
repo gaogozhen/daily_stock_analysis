@@ -487,3 +487,19 @@ jobs:
             echo "📜 最近日志（最后 30 行）:"
             tail -30 logs/stock_analysis_*.log 2>/dev/null || echo "无日志"
           fi
+      - name: 强行发送报告到 Telegram
+        if: always()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_USER_ID: ${{ secrets.TG_USER_ID }}
+        run: |
+          REPORT_FILE=$(ls reports/market_review_*.md 2>/dev/null | head -n 1)
+          if [ -f "$REPORT_FILE" ]; then
+            echo "找到报告，正在强行投递到 Telegram..."
+            curl -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument" \
+              -F "chat_id=${TG_USER_ID}" \
+              -F "document=@${REPORT_FILE}" \
+              -F "caption=🚀 DeepSeek 今日股票智能分析报告已生成！"
+          else
+            echo "未在 reports 目录下找到报告文件"
+          fi
