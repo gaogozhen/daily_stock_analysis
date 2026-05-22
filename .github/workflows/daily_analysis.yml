@@ -493,13 +493,14 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_USER_ID: ${{ secrets.TG_USER_ID }}
         run: |
-          REPORT_FILE=$(ls reports/market_review_*.md 2>/dev/null | head -n 1)
-          if [ -f "$REPORT_FILE" ]; then
-            echo "找到报告，正在强行投递到 Telegram..."
+          echo "=== 开始全盘搜索研报文件 ==="
+          REPORT_FILE=$(find . -name "*.md" ! -name "README.md" ! -name "CONTRIBUTING.md" | head -n 1)
+          if [ -n "$REPORT_FILE" ] && [ -f "$REPORT_FILE" ]; then
+            echo "🎯 成功定位到生成的报告文件: $REPORT_FILE"
             curl -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument" \
               -F "chat_id=${TG_USER_ID}" \
               -F "document=@${REPORT_FILE}" \
-              -F "caption=🚀 DeepSeek 今日股票智能分析报告已生成！"
+              -F "caption=🚀 DeepSeek 今日智能研报已成功送达！"
           else
-            echo "未在 reports 目录下找到报告文件"
+            echo "❌ 未找到报告文件"
           fi
