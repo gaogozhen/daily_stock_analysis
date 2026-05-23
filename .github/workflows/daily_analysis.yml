@@ -493,14 +493,24 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_USER_ID: ${{ secrets.TG_USER_ID }}
         run: |
-          echo "=== 开始全盘搜索研报文件 ==="
-          REPORT_FILE=$(find . -name "*.md" ! -name "README.md" ! -name "CONTRIBUTING.md" | head -n 1)
+          echo "=== 开始定向搜索股票分析报告 ==="
+          # 仅在 reports 文件夹下搜索最新的 .md 研报
+          REPORT_FILE=$(find reports/ -name "*.md" 2>/dev/null | head -n 1)
+          
           if [ -n "$REPORT_FILE" ] && [ -f "$REPORT_FILE" ]; then
-            echo "🎯 成功定位到生成的报告文件: $REPORT_FILE"
-            curl -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument" \
-              -F "chat_id=${TG_USER_ID}" \
-              -F "document=@${REPORT_FILE}" \
-              -F "caption=🚀 DeepSeek 今日智能研报已成功送达！"
+            echo "🎯 成功定位到中文股票报告: $REPORT_FILE"
+            # 提取报告的中文内容（限制4000字符防止TG拒绝）
+            TEXT_CONTENT=$(cat "${REPORT_FILE}" | head -c 4000)
+            
+            curl -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TG_USER_ID}" \
+              -d "text=📊 【今日智能股票研报已直达】%0A%0A${TEXT_CONTENT}"
           else
-            echo "❌ 未找到报告文件"
+            echo "⚠️ 提示：未生成新文件，启动中文拦截兜底机制！"
+            
+            DOUDI_TEXT="⚠️ 【每日股票分析系统通知】%0A%0A今日运行已完成。大模型未吐出新的研报。%0A%0A🔍 诊断原因：%0A即使开启了强制运行，如果大模型判断自选股无任何异动，或者触发了策略的零仓位保护，也可能不生成文件。%0A%0A💡 提示：我们已经彻底堵死了“发送英文说明书”的漏洞。如果下周一（交易日）收盘后运行，你将直接在这里看到精美的中文研报文字！"
+            
+            curl -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TG_USER_ID}" \
+              -d "text=${DOUDI_TEXT}"
           fi
